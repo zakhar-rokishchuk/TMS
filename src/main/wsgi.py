@@ -1,5 +1,6 @@
 import sentry_sdk
 
+from framework.dirs import DIR_SRC
 from framework.util.settings import get_setting
 
 sentry_sdk.init(get_setting("SENTRY_DSN"), traces_sample_rate=1.0)
@@ -8,6 +9,10 @@ sentry_sdk.init(get_setting("SENTRY_DSN"), traces_sample_rate=1.0)
 def application(environ, start_response):
     if environ["PATH_INFO"] == "/e/":
         division = 1 / 0
+    elif environ["PATH_INFO"] == "/about/":
+        template = read_template("about.html")
+    else:
+        template = read_template("index.html")
 
     status = "200 OK"
 
@@ -15,21 +20,29 @@ def application(environ, start_response):
         "Content-type": "text/html",
     }
 
-    payload = (
-        b"<!DOCTYPE html>"
-        b"<html>"
-        b"<head>"
-        b"<title>Alpha</title>"
-        b'<meta charset="utf-8">'
-        b"</head>"
-        b"<body>"
-        b"<h1>Project v.1</h1>"
-        b"<hr>"
-        b"<p>My project v.1.</p>"
-        b"</body>"
-        b"</html>"
+    environ2 = ""
+
+    for key in environ:
+        value = environ[key]
+        text = f"<p><b>{key}</b> : {value}</p>"
+        environ2 += text
+
+    payload = template.format(
+        environ=environ2,
     )
 
     start_response(status, list(headers.items()))
 
-    yield payload
+    yield payload.encode()
+
+
+def read_template(template_name):
+    dir_templates = DIR_SRC / "main" / "templates"
+    template = dir_templates / template_name
+
+    assert template.exists() and template.is_file()
+
+    with template.open("r") as fd:
+        content = fd.read()
+
+    return content
